@@ -1,15 +1,15 @@
 package com.projemanag.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.WindowManager
 import android.widget.Toast
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.projemanag.R
-import com.projemanag.model.User
+import com.projemanag.firebase.FireStoreHandler
+import com.projemanag.models.User
 import kotlinx.android.synthetic.main.activity_sign_up.*
 
 class SignUpActivity : BaseActivity() {
@@ -31,10 +31,11 @@ class SignUpActivity : BaseActivity() {
 
         setupActionBar()
 
+
         // TODO (Step 11: Add a click event to the Sign-Up button and call the registerUser function.)
         // START
         // Click event for sign-up button.
-        btn_sign_up.setOnClickListener{
+        btn_sign_up.setOnClickListener {
             registerUser()
         }
     }
@@ -55,18 +56,44 @@ class SignUpActivity : BaseActivity() {
         toolbar_sign_up_activity.setNavigationOnClickListener { onBackPressed() }
     }
 
+    fun userRegisteredSuccess() {
+        Toast.makeText(
+            this,
+            "You have successfully registered",
+            Toast.LENGTH_SHORT
+        ).show()
+        hideProgressDialog()
+
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
+
     // TODO (Step 9: A function to register a new user to the app.)
     // START
     /**
      * A function to register a user to our app using the Firebase.
      * For more details visit: https://firebase.google.com/docs/auth/android/custom-auth
      */
-    private fun registerUser(){
+    private fun registerUser() {
         val name: String = et_name.text.toString().trim { it <= ' ' }
         val email: String = et_email.text.toString().trim { it <= ' ' }
         val password: String = et_password.text.toString().trim { it <= ' ' }
 
         if (validateForm(name, email, password)) {
+
+            showProgressDialog(resources.getString(R.string.please_wait))
+            FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        val firebaseUser: FirebaseUser = task.result!!.user!!
+                        val registeredEmail = firebaseUser.email!!
+                        val user = User(firebaseUser.uid, name, registeredEmail)
+                        FireStoreHandler().registerUser(this, user)
+                    } else {
+                        Toast.makeText(this@SignUpActivity, "Signup failed", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
 
             Toast.makeText(
                 this@SignUpActivity,
